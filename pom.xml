@@ -210,6 +210,7 @@
     <module>activemq-amqp</module>
     <module>activemq-kahadb-store</module>
     <module>activemq-jdbc-store</module>
+    <module>activemq-bookkeeper-store</module>
     <module>activemq-all</module>
     <module>activemq-camel</module>
     <module>activemq-console</module>
