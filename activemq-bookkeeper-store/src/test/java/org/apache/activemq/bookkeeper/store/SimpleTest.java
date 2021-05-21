@@ -17,27 +17,13 @@ public class SimpleTest {
         config.setAddEntryTimeout(2000);
 
         try (BookKeeper bookKeeper = new BookKeeper(config)) {
-            
-            byte[] messages = "messages".getBytes();
-            LedgerHandle ledger = bookKeeper.createLedger(BookKeeper.DigestType.MAC, messages);
+
+            LedgerHandle ledger = bookKeeper.createLedger(BookKeeper.DigestType.MAC, "activemq".getBytes());
             long ledgerId = ledger.getId();
 
-            ledger.addEntry("My First Message".getBytes());
-
+            ledger.append("my-message".getBytes());
+            
             ledger.close();
-
-            ledger = bookKeeper.openLedger(ledgerId, BookKeeper.DigestType.MAC, messages);
-
-            Enumeration<LedgerEntry> entries = ledger.readEntries(0, ledger.getLastAddConfirmed());
-            while (entries.hasMoreElements()) {
-                LedgerEntry entry = entries.nextElement();
-                System.out.println("Entry: " + entry.getEntryId());
-            }
-
-            System.out.println("Ledger size: " + ledger.getLength());
-
-            ledger.close();
-            bookKeeper.close();
         }
     }
 
