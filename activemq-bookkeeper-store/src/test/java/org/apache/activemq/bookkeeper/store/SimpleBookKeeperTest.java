@@ -4,7 +4,7 @@ import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.client.LedgerHandle;
 import org.junit.Test;
 
-public class SimpleTest {
+public class SimpleBookKeeperTest {
 
     @Test
     public void simpleStorage() throws Exception {
