@@ -18,6 +18,8 @@ import org.apache.activemq.util.ServiceSupport;
 import org.apache.activemq.wireformat.WireFormat;
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BookKeeper;
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,6 +40,7 @@ public class BookKeeperPersistenceAdapter extends ServiceSupport implements Pers
     private MemoryTransactionStore transactionStore = new MemoryTransactionStore(this);
     private File directory;
 
+    private CuratorFramework zookeeper;
     private BookKeeper bookKeeper;
 
     private static final Logger LOG = LoggerFactory.getLogger(BookKeeperPersistenceAdapter.class);
@@ -55,6 +58,7 @@ public class BookKeeperPersistenceAdapter extends ServiceSupport implements Pers
             zookeeperUris = "127.0.0.1:2181";
         }
         bookKeeper = new BookKeeper(zookeeperUris);
+        zookeeper = CuratorFrameworkFactory.newClient(zookeeperUris)
     }
 
     @Override
