@@ -1,0 +1,50 @@
+---
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+title: "Apache ActiveMQ"
+type: home
+cascade:
+  no_list: true
+---
+{{< blocks/cover title="Welcome to the Apache ActiveMQ™ web site!" image_anchor="center" color="primary" >}}
+Apache ActiveMQ is the most popular open source, multi-protocol, Java-based message broker. It supports industry standard
+protocols so users get the benefits of client choices across a broad range of languages and platforms. Connect from clients
+written in JavaScript, C, C++, Python, .Net, and more. Integrate your multi-platform applications using the ubiquitous AMQP
+protocol. Exchange messages between your web applications using STOMP over websockets. Manage your IoT devices using MQTT.
+Support your existing JMS infrastructure and beyond. ActiveMQ offers the power and flexibility to support any messaging
+use-case.
+{{< /blocks/cover >}}
+
+{{< blocks/section color="dark" type="row" >}}
+{{% blocks/feature icon="fa-lightbulb" title="Join the community!" url="https://the-asf.slack.com/" url_text="Chat with us" %}}
+Chat with users and project developers!
+{{% /blocks/feature %}}
+{{% blocks/feature icon="fa-brands fa-github" title="Contributions welcome!" url="https://github.com/apache/activemq/pulls" url_text="ActiveMQ Pull Requests" %}}
+We do a https://github.com/apache/activemq/pulls[Pull Request] contributions workflow on **GitHub**. New users are always welcome!
+{{% /blocks/feature %}}
+{{% blocks/feature icon="fa fa-envelope" title="Join our mailing list" url="https://lists.apache.org/list.html?dev@activemq.apache.org" url_text="Subscribe" %}}
+For announcement and discussions about the project.
+{{% /blocks/feature %}}
+{{< /blocks/section >}}
+
+{{< blocks/section color="dark" >}}
+<p>
+Apache®, Apache ActiveMQ™ are either registered trademarks or trademarks of the Apache Software Foundation in the United States and/or other countries.
+</p>
+{{< /blocks/section >}}
