@@ -115,6 +115,24 @@
     
     <transportConnectors>
        <transportConnector name="openwire" uri="tcp://0.0.0.0:61616"/>
+
+       <!--
+           You can restrict which IP addresses are allowed to connect using
+           the allowedIps and deniedIps URI parameters on the transport connector.
+           Both support exact addresses and CIDR notation, comma-separated.
+           The deny list is checked first and takes precedence over the allow list.
+
+           Examples:
+
+           Only allow connections from the 192.168.1.0/24 and 10.0.0.0/8 subnets:
+       <transportConnector name="restricted" uri="tcp://0.0.0.0:61617?allowedIps=192.168.1.0/24,10.0.0.0/8"/>
+
+           Block specific addresses:
+       <transportConnector name="filtered" uri="tcp://0.0.0.0:61617?deniedIps=192.168.1.100,172.16.0.0/12"/>
+
+           Combine both (deny list takes precedence):
+       <transportConnector name="combined" uri="tcp://0.0.0.0:61617?allowedIps=192.168.1.0/24&amp;deniedIps=192.168.1.100"/>
+       -->
     </transportConnectors>
 
     <!-- destroy the spring context on shutdown to stop jetty -->

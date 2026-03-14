@@ -194,6 +194,10 @@
             <transportConnector name="stomp" uri="stomp://localhost:61613"/>
             <!-- Create a Websocket transport for the websocket dmeo -->
             <transportConnector name="ws" uri="ws://localhost:61614/" />
+
+            <!-- You can restrict connections by IP address using allowedIps
+              and/or deniedIps URI parameters. Both support CIDR notation.
+              See examples/conf/activemq-security.xml for detailed examples. -->
         </transportConnectors>
 
         <!-- destroy the spring context on shutdown to stop jetty -->

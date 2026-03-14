@@ -127,6 +127,11 @@ public class TcpTransportServer extends TransportServerThreadSupport implements 
     protected final AtomicLong maximumConnectionsExceededCount = new AtomicLong(0l);
     protected final AtomicInteger currentTransportCount = new AtomicInteger();
 
+    private String allowedIps;
+    private String deniedIps;
+    private volatile IpFilter allowedIpFilter;
+    private volatile IpFilter deniedIpFilter;
+
     public TcpTransportServer(TcpTransportFactory transportFactory, URI location, ServerSocketFactory serverSocketFactory) throws IOException,
         URISyntaxException {
         super(location);
@@ -577,6 +582,20 @@ public class TcpTransportServer extends TransportServerThreadSupport implements 
         boolean closeSocket = true;
         boolean countIncremented = false;
         try {
+            InetAddress remoteAddress = socket.getInetAddress();
+            if (remoteAddress != null) {
+                IpFilter denied = this.deniedIpFilter;
+                if (denied != null && denied.matches(remoteAddress)) {
+                    throw new IOException("Connection from " + remoteAddress.getHostAddress()
+                        + " rejected: address is in the deny list");
+                }
+                IpFilter allowed = this.allowedIpFilter;
+                if (allowed != null && !allowed.matches(remoteAddress)) {
+                    throw new IOException("Connection from " + remoteAddress.getHostAddress()
+                        + " rejected: address is not in the allow list");
+                }
+            }
+
             int currentCount;
             do {
                 currentCount = currentTransportCount.get();
@@ -738,5 +757,34 @@ public class TcpTransportServer extends TransportServerThreadSupport implements 
     @Override
     public void resetStatistics() {
         this.maximumConnectionsExceededCount.set(0l);
+    }
+
+    public String getAllowedIps() {
+        return allowedIps;
+    }
+
+    /**
+     * Sets a comma-separated list of IP addresses or CIDR blocks that are
+     * allowed to connect. If set, only connections from matching addresses
+     * are accepted. Example: {@code 192.168.1.0/24,10.0.0.1}
+     */
+    public void setAllowedIps(String allowedIps) {
+        this.allowedIps = allowedIps;
+        this.allowedIpFilter = IpFilter.parse(allowedIps);
+    }
+
+    public String getDeniedIps() {
+        return deniedIps;
+    }
+
+    /**
+     * Sets a comma-separated list of IP addresses or CIDR blocks that are
+     * denied from connecting. Connections from matching addresses are rejected.
+     * The deny list is checked before the allow list.
+     * Example: {@code 192.168.1.100,172.16.0.0/12}
+     */
+    public void setDeniedIps(String deniedIps) {
+        this.deniedIps = deniedIps;
+        this.deniedIpFilter = IpFilter.parse(deniedIps);
     }
 }
