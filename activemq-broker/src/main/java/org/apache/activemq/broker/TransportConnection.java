@@ -853,6 +853,15 @@ public class TransportConnection implements Connection, Task, CommandVisitor {
         try {
             broker.addConnection(context, info);
         } catch (Exception e) {
+            // addConnection may have partially completed through the broker
+            // filter chain (e.g. RegionBroker added to connections list,
+            // ManagedRegionBroker incremented counter) before a filter above
+            // threw. Call removeConnection to undo the partial work.
+            try {
+                broker.removeConnection(context, info, null);
+            } catch (Throwable t) {
+                LOG.debug("Failed to clean up partially added connection id={}", info.getConnectionId(), t);
+            }
             synchronized (brokerConnectionStates) {
                 brokerConnectionStates.remove(info.getConnectionId());
             }

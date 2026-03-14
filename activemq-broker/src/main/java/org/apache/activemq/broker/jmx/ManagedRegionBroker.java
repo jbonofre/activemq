@@ -100,6 +100,7 @@ public class ManagedRegionBroker extends RegionBroker {
     private final Map<SubscriptionKey, ObjectName> subscriptionKeys = new ConcurrentHashMap<>();
     private final Map<Subscription, ObjectName> subscriptionMap = new ConcurrentHashMap<>();
     private final Set<ObjectName> registeredMBeans = ConcurrentHashMap.newKeySet();
+    private final Set<ConnectionInfo> trackedConnections = ConcurrentHashMap.newKeySet();
     /* This is the first broker in the broker interceptor chain. */
     private Broker contextBroker;
 
@@ -228,14 +229,20 @@ public class ManagedRegionBroker extends RegionBroker {
     @Override
     public void addConnection(ConnectionContext context, ConnectionInfo info) throws Exception {
         super.addConnection(context, info);
+        trackedConnections.add(info);
         this.contextBroker.getBrokerService().incrementCurrentConnections();
         this.contextBroker.getBrokerService().incrementTotalConnections();
     }
 
     @Override
     public void removeConnection(ConnectionContext context, ConnectionInfo info, Throwable error) throws Exception {
-        super.removeConnection(context, info, error);
-        this.contextBroker.getBrokerService().decrementCurrentConnections();
+        try {
+            super.removeConnection(context, info, error);
+        } finally {
+            if (trackedConnections.remove(info)) {
+                this.contextBroker.getBrokerService().decrementCurrentConnections();
+            }
+        }
     }
 
     @Override
