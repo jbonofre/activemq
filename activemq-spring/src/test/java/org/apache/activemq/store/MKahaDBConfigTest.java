@@ -27,8 +27,6 @@ import org.apache.activemq.usage.SystemUsage;
 import org.apache.activemq.xbean.BrokerFactoryBean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.core.io.Resource;
 
 import java.io.File;
 
@@ -86,10 +84,6 @@ public class MKahaDBConfigTest extends TestCase {
     }
 
     protected BrokerService createBroker(String resource) throws Exception {
-        return createBroker(new ClassPathResource(resource));
-    }
-
-    protected BrokerService createBroker(Resource resource) throws Exception {
         BrokerFactoryBean factory = new BrokerFactoryBean(resource);
         factory.afterPropertiesSet();
 

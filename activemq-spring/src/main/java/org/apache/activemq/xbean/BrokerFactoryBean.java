@@ -45,7 +45,7 @@ import org.apache.activemq.spring.Utils;
 public class BrokerFactoryBean {
 
     private URL config;
-    private XBeanBrokerService broker;
+    private BrokerService broker;
     private boolean start;
     private DefaultBrokerContext brokerContext;
 
@@ -80,12 +80,7 @@ public class BrokerFactoryBean {
         }
 
         XBeanBrokerLoader loader = new XBeanBrokerLoader();
-        BrokerService loaded = loader.loadBroker(config);
-        if (!(loaded instanceof XBeanBrokerService)) {
-            throw new IllegalArgumentException(
-                    "The configuration has no XBeanBrokerService instance for resource: " + config);
-        }
-        broker = (XBeanBrokerService) loaded;
+        broker = loader.loadBroker(config);
         brokerContext = new DefaultBrokerContext(loader.getBeanRegistry(), config.toExternalForm());
         broker.setBrokerContext(brokerContext);
 

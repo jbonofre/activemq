@@ -18,7 +18,6 @@ package org.apache.activemq.xbean;
 
 import java.net.URI;
 
-import org.apache.activemq.broker.BrokerContextAware;
 import org.apache.activemq.broker.BrokerFactoryHandler;
 import org.apache.activemq.broker.BrokerService;
 import org.apache.activemq.spring.DefaultBrokerContext;
@@ -29,7 +28,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.URL;
-import java.util.Map;
 
 /**
  * Creates a {@link BrokerService} from an XBean XML configuration URI using the
@@ -66,11 +64,7 @@ public class XBeanBrokerFactory implements BrokerFactoryHandler {
         Map<String, Object> registry = loader.getBeanRegistry();
 
         DefaultBrokerContext brokerContext = new DefaultBrokerContext(registry, uri);
-        if (broker instanceof BrokerContextAware) {
-            ((BrokerContextAware) broker).setBrokerContext(brokerContext);
-        } else {
-            broker.setBrokerContext(brokerContext);
-        }
+        broker.setBrokerContext(brokerContext);
 
         return broker;
     }

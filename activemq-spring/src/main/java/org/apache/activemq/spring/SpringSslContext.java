@@ -38,11 +38,10 @@ import java.util.Arrays;
 import java.util.Collection;
 
 import jakarta.annotation.PostConstruct;
+import javax.net.ssl.KeyManager;
 import javax.net.ssl.KeyManagerFactory;
-import javax.net.ssl.SSLException;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
-import javax.net.ssl.KeyManager;
 
 import org.apache.activemq.broker.SslContext;
 import org.slf4j.Logger;

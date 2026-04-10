@@ -57,10 +57,14 @@ public class XBeanBrokerLoader {
             "META-INF/org.apache.xbean.spring.context.v2/mapping.properties";
 
     private final Map<String, String> elementToClass;
+    /** Per-element metadata, e.g. "broker.init-method" → "afterPropertiesSet". */
+    private final Map<String, String> elementMetadata;
     private final Map<String, Object> beanRegistry = new LinkedHashMap<>();
 
     public XBeanBrokerLoader() throws IOException {
-        this.elementToClass = loadAllMappings();
+        Map<String, String>[] maps = loadAllMappings();
+        this.elementToClass = maps[0];
+        this.elementMetadata = maps[1];
     }
 
     // -------------------------------------------------------------------------
@@ -111,8 +115,10 @@ public class XBeanBrokerLoader {
     // Mapping loading
     // -------------------------------------------------------------------------
 
-    private static Map<String, String> loadAllMappings() throws IOException {
-        Map<String, String> result = new LinkedHashMap<>();
+    @SuppressWarnings("unchecked")
+    private static Map<String, String>[] loadAllMappings() throws IOException {
+        Map<String, String> classes = new LinkedHashMap<>();
+        Map<String, String> metadata = new LinkedHashMap<>();
         ClassLoader cl = currentClassLoader();
         Enumeration<URL> urls = cl.getResources(MAPPING_RESOURCE);
         while (urls.hasMoreElements()) {
@@ -121,18 +127,20 @@ public class XBeanBrokerLoader {
                 props.load(is);
             }
             for (String key : props.stringPropertyNames()) {
-                // Skip per-property metadata entries; only keep element→class entries.
-                // Keys with a dot (.) are metadata like "broker.init-method", etc.
+                String value = props.getProperty(key).trim();
                 if (key.indexOf('.') < 0) {
-                    String value = props.getProperty(key).trim();
-                    result.put(key, value);
+                    // Plain element name → class name
+                    classes.put(key, value);
+                } else {
+                    // Metadata entry: "elementName.init-method", "elementName.destroy-method", etc.
+                    metadata.put(key, value);
                 }
             }
         }
-        if (result.isEmpty()) {
+        if (classes.isEmpty()) {
             LOG.warn("No XBean mapping found at {}; XML broker configuration may not work correctly.", MAPPING_RESOURCE);
         }
-        return result;
+        return new Map[]{classes, metadata};
     }
 
     // -------------------------------------------------------------------------
@@ -243,37 +251,36 @@ public class XBeanBrokerLoader {
         LOG.debug("Could not set property '{}' on {}", childName, parent.getClass().getSimpleName());
     }
 
-    /** Call afterPropertiesSet() or any method annotated with @org.apache.xbean.InitMethod. */
+    /**
+     * Calls the init method on a freshly configured bean. Checks, in order:
+     * <ol>
+     *   <li>The XBean mapping metadata entry {@code elementName.init-method}</li>
+     *   <li>The conventional {@code afterPropertiesSet()} method</li>
+     * </ol>
+     */
     private void callInit(Object bean, String elementName) {
-        // Try afterPropertiesSet (XBean convention)
-        try {
-            Method m = bean.getClass().getMethod("afterPropertiesSet");
-            m.invoke(bean);
-            return;
-        } catch (NoSuchMethodException ignored) {
-            // not present
-        } catch (Exception e) {
-            LOG.warn("afterPropertiesSet() failed on {}: {}", bean.getClass().getSimpleName(), e.getMessage());
-        }
-
-        // Try the init method name from the mapping metadata (key: "elementName.init-method")
-        String initMethod = lookupMetadata(elementName + ".init-method");
+        // 1. Explicit init-method from XBean mapping metadata
+        String initMethod = elementMetadata.get(elementName + ".init-method");
         if (initMethod != null && !initMethod.isEmpty()) {
             try {
-                Method m = bean.getClass().getMethod(initMethod);
-                m.invoke(bean);
+                bean.getClass().getMethod(initMethod).invoke(bean);
+                return;
+            } catch (NoSuchMethodException ignored) {
+                // mapping may be stale; fall through
             } catch (Exception e) {
                 LOG.warn("Init method '{}' failed on {}: {}", initMethod,
                         bean.getClass().getSimpleName(), e.getMessage());
             }
         }
-    }
 
-    /** Look up a per-element metadata entry (e.g. init-method, destroy-method). */
-    private String lookupMetadata(String key) {
-        // These entries are stored with dots, which we filtered out during load.
-        // Re-read isn't practical here; callers may load them separately if needed.
-        return null;
+        // 2. XBean / Spring convention: afterPropertiesSet()
+        try {
+            bean.getClass().getMethod("afterPropertiesSet").invoke(bean);
+        } catch (NoSuchMethodException ignored) {
+            // bean has no init method
+        } catch (Exception e) {
+            LOG.warn("afterPropertiesSet() failed on {}: {}", bean.getClass().getSimpleName(), e.getMessage());
+        }
     }
 
     // -------------------------------------------------------------------------
