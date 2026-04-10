@@ -12,43 +12,20 @@
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
- * limitations under the License. 
+ * limitations under the License.
  */
 package org.apache.activemq.spring;
 
-import java.util.Map;
+/**
+ * @deprecated Use {@link DefaultBrokerContext} instead. This class previously
+ *             wrapped a Spring {@code ApplicationContext}; it is now a plain
+ *             subclass of {@link DefaultBrokerContext} with no additional
+ *             Spring dependency.
+ */
+@Deprecated
+public class SpringBrokerContext extends DefaultBrokerContext {
 
-import org.apache.activemq.broker.BrokerContext;
-import org.springframework.beans.BeansException;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationContextAware;
-
-public class SpringBrokerContext implements BrokerContext, ApplicationContextAware {
-
-    ApplicationContext applicationContext;
-    String configurationUrl;
-
-    public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
-        this.applicationContext = applicationContext;
-    }
-
-    public Object getBean(String name) {
-        try {
-            return applicationContext.getBean(name);
-        } catch (BeansException ex) {
-            return null;
-        }
-    }
-
-    public Map getBeansOfType(Class type) {
-        return applicationContext.getBeansOfType(type);
-    }
-
-    public void setConfigurationUrl(String configurationUrl) {
-        this.configurationUrl = configurationUrl;
-    }
-
-    public String getConfigurationUrl() {
-        return configurationUrl;
+    public SpringBrokerContext() {
+        super();
     }
 }

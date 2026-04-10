@@ -16,18 +16,19 @@
  */
 package org.apache.activemq.security;
 
-import org.springframework.beans.factory.DisposableBean;
-import org.springframework.beans.factory.InitializingBean;
-
 /**
- * A {@link DefaultAuthorizationMap} implementation which uses LDAP to initialize and update authorization
- * policy.
+ * A {@link DefaultAuthorizationMap} implementation which uses LDAP to
+ * initialize and update authorization policy.
+ *
+ * <p>Lifecycle methods ({@link #afterPropertiesSet()} and {@link #destroy()})
+ * are inherited from {@link SimpleCachedLDAPAuthorizationMap}. Call them
+ * explicitly when not running inside a Jakarta EE / CDI container.</p>
  *
  * @org.apache.xbean.XBean
  *
  * @author <a href="http://hiramchirino.com">Hiram Chirino</a>
  */
-public class CachedLDAPAuthorizationMap extends SimpleCachedLDAPAuthorizationMap implements InitializingBean, DisposableBean {
+public class CachedLDAPAuthorizationMap extends SimpleCachedLDAPAuthorizationMap {
 
     @Override
     public void afterPropertiesSet() throws Exception {
@@ -38,5 +39,4 @@ public class CachedLDAPAuthorizationMap extends SimpleCachedLDAPAuthorizationMap
     public void destroy() throws Exception {
         super.destroy();
     }
-
 }

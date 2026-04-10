@@ -17,32 +17,66 @@
 package org.apache.activemq.spring;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.net.MalformedURLException;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.core.io.FileSystemResource;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
-import org.springframework.util.ResourceUtils;
+import java.net.URL;
 
+/**
+ * Resolves a string path/URI to a {@link URL} using plain Java mechanisms:
+ * filesystem check, explicit URL schemes, and classpath fallback.
+ */
 public class Utils {
 
-    public static Resource resourceFromString(String uri) throws MalformedURLException {
-        Resource resource;
+    /**
+     * Resolve {@code uri} to a {@link URL}.
+     *
+     * <ul>
+     *   <li>If the path points to an existing file on the filesystem it is
+     *       returned as a {@code file:} URL.</li>
+     *   <li>Strings beginning with {@code classpath:} are resolved against the
+     *       context class loader.</li>
+     *   <li>Any valid URL string (containing {@code ://}) is returned directly.</li>
+     *   <li>Otherwise the string is treated as a classpath resource.</li>
+     * </ul>
+     *
+     * @throws MalformedURLException if the resource cannot be resolved
+     */
+    public static URL resourceFromString(String uri) throws MalformedURLException {
+        // 1. Filesystem check
         File file = new File(uri);
         if (file.exists()) {
-            resource = new FileSystemResource(uri);
-        } else if (ResourceUtils.isUrl(uri)) {
-            try {
-                resource = new UrlResource(ResourceUtils.getURL(uri));
-            } catch (FileNotFoundException e) {
-                MalformedURLException malformedURLException = new MalformedURLException(uri);
-                malformedURLException.initCause(e);
-                throw  malformedURLException;
-            }
-        } else {
-            resource = new ClassPathResource(uri);
+            return file.toURI().toURL();
         }
-        return resource;
+
+        // 2. Explicit classpath: prefix
+        if (uri.startsWith("classpath:")) {
+            String path = uri.substring("classpath:".length());
+            URL url = classLoader().getResource(path);
+            if (url != null) {
+                return url;
+            }
+            throw new MalformedURLException("Classpath resource not found: " + path);
+        }
+
+        // 3. Explicit URL with scheme (http://, file://, etc.)
+        if (uri.contains("://") || uri.startsWith("file:")) {
+            try {
+                return new URL(uri);
+            } catch (MalformedURLException e) {
+                // fall through to classpath lookup
+            }
+        }
+
+        // 4. Classpath fallback
+        URL url = classLoader().getResource(uri);
+        if (url != null) {
+            return url;
+        }
+
+        throw new MalformedURLException("Cannot resolve URI: " + uri);
+    }
+
+    private static ClassLoader classLoader() {
+        ClassLoader cl = Thread.currentThread().getContextClassLoader();
+        return (cl != null) ? cl : Utils.class.getClassLoader();
     }
 }

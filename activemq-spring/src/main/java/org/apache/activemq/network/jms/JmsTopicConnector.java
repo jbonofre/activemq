@@ -16,21 +16,36 @@
  */
 package org.apache.activemq.network.jms;
 
-import org.springframework.jndi.JndiTemplate;
+import java.util.Properties;
 
 /**
- * A Bridge to other JMS Topic providers
+ * A Bridge to other JMS Topic providers.
+ *
+ * <p>JNDI contexts are configured via {@link Properties} objects rather than
+ * Spring's {@code JndiTemplate}, removing the Spring dependency.</p>
  *
  * @org.apache.xbean.XBean
  * @author <a href="http://hiramchirino.com">Hiram Chirino</a>
  */
 public class JmsTopicConnector extends SimpleJmsTopicConnector {
 
-    public void setJndiLocalTemplate(JndiTemplate template) {
-        super.setJndiLocalTemplate(new JndiTemplateLookupFactory(template));
+    /**
+     * Configures the local JNDI context using the supplied environment
+     * properties.
+     *
+     * @param environment JNDI environment properties for the local context
+     */
+    public void setJndiLocalEnvironment(Properties environment) {
+        super.setJndiLocalTemplate(new JndiTemplateLookupFactory(environment));
     }
 
-    public void setJndiOutboundTemplate(JndiTemplate template) {
-        super.setJndiOutboundTemplate(new JndiTemplateLookupFactory(template));
+    /**
+     * Configures the outbound JNDI context using the supplied environment
+     * properties.
+     *
+     * @param environment JNDI environment properties for the outbound context
+     */
+    public void setJndiOutboundEnvironment(Properties environment) {
+        super.setJndiOutboundTemplate(new JndiTemplateLookupFactory(environment));
     }
 }

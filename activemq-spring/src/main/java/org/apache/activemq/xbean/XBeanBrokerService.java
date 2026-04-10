@@ -24,7 +24,6 @@ import jakarta.annotation.PreDestroy;
 import org.apache.activemq.broker.BrokerFactory;
 import org.apache.activemq.broker.BrokerService;
 import org.apache.activemq.usage.SystemUsage;
-import org.springframework.beans.CachedIntrospectionResults;
 
 /**
  * An ActiveMQ Message Broker. It consists of a number of transport
@@ -117,8 +116,6 @@ public class XBeanBrokerService extends BrokerService {
 
     @Override
     public void stop() throws Exception {
-        // must clear this Spring cache to avoid any memory leaks
-        CachedIntrospectionResults.clearClassLoader(getClass().getClassLoader());
         super.stop();
     }
 

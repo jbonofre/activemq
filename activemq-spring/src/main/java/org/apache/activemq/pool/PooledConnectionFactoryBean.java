@@ -23,28 +23,26 @@ import jakarta.transaction.TransactionManager;
 import org.apache.activemq.jms.pool.PooledConnectionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.FactoryBean;
 
 /**
- * Simple factory bean used to create a jencks connection pool.
- * Depending on the properties set, it will create a simple pool,
- * a transaction aware connection pool, or a jca aware connection pool.
+ * A plain-Java factory that creates a {@link PooledConnectionFactory}
+ * appropriate to the configured transaction strategy:
+ * <ul>
+ *   <li>JCA pool – when both {@code transactionManager} and {@code resourceName} are set</li>
+ *   <li>XA pool  – when only {@code transactionManager} is set</li>
+ *   <li>Plain pool – otherwise</li>
+ * </ul>
  *
- * <pre class="code">
- * <bean id="pooledConnectionFactory" class="javax.script.ScriptEngineFactory.PooledConnectionFactoryFactoryBean">
- *   <property name="connectionFactory" ref="connectionFactory" />
- *   <property name="transactionManager" ref="transactionManager" />
- *   <property name="resourceName" value="ResourceName" />
- * </bean>
- * </pre>
+ * <p>Call {@link #afterPropertiesSet()} to initialise and {@link #destroy()} to
+ * stop the pool. In Jakarta EE / CDI containers the {@link PostConstruct} /
+ * {@link PreDestroy} callbacks are invoked automatically.</p>
  *
- * The <code>resourceName</code> property should be used along with the {@link org.apache.activemq.jms.pool.GenericResourceManager} and have
- * the same value than its <code>resourceName</code> property. This will make sure the transaction manager
- * maps correctly the connection factory to the recovery process.
+ * <p>Previously this class implemented Spring's {@code FactoryBean}. That
+ * interface has been removed so that no Spring dependency is required.</p>
  *
  * @org.apache.xbean.XBean
  */
-public class PooledConnectionFactoryBean implements FactoryBean {
+public class PooledConnectionFactoryBean {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PooledConnectionFactoryBean.class);
 
@@ -55,50 +53,13 @@ public class PooledConnectionFactoryBean implements FactoryBean {
     private Object transactionManager;
     private String resourceName;
 
-    public int getMaxConnections() {
-        return maxConnections;
-    }
-
-    public void setMaxConnections(int maxConnections) {
-        this.maxConnections = maxConnections;
-    }
-
-    public int getMaximumActive() {
-        return maximumActive;
-    }
-
-    public void setMaximumActive(int maximumActive) {
-        this.maximumActive = maximumActive;
-    }
-
-    public Object getTransactionManager() {
-        return transactionManager;
-    }
-
-    public void setTransactionManager(Object transactionManager) {
-        this.transactionManager = transactionManager;
-    }
-
-    public String getResourceName() {
-        return resourceName;
-    }
-
-    public void setResourceName(String resourceName) {
-        this.resourceName = resourceName;
-    }
-
-    public ConnectionFactory getConnectionFactory() {
-        return connectionFactory;
-    }
-
-    public void setConnectionFactory(ConnectionFactory connectionFactory) {
-        this.connectionFactory = connectionFactory;
-    }
+    // -------------------------------------------------------------------------
+    // Lifecycle
+    // -------------------------------------------------------------------------
 
     /**
-     * JSR-250 callback wrapper; converts checked exceptions to runtime exceptions
-     *
-     * delegates to afterPropertiesSet, done to prevent backwards incompatible signature change.
+     * Jakarta EE lifecycle callback. In plain Java code call
+     * {@link #afterPropertiesSet()} directly.
      */
     @PostConstruct
     private void postConstruct() {
@@ -110,8 +71,9 @@ public class PooledConnectionFactoryBean implements FactoryBean {
     }
 
     /**
+     * Creates the appropriate {@link PooledConnectionFactory} based on the
+     * configured properties.
      *
-     * @throws Exception
      * @org.apache.xbean.InitMethod
      */
     public void afterPropertiesSet() throws Exception {
@@ -155,14 +117,14 @@ public class PooledConnectionFactoryBean implements FactoryBean {
             }
         }
         if (pooledConnectionFactory == null) {
-            throw new IllegalStateException("Unable to create pooled connection factory.  Enable DEBUG log level for more informations");
+            throw new IllegalStateException(
+                    "Unable to create pooled connection factory. Enable DEBUG log level for more information.");
         }
     }
 
     /**
-     * JSR-250 callback wrapper; converts checked exceptions to runtime exceptions
-     *
-     * delegates to destroy, done to prevent backwards incompatible signature change.
+     * Jakarta EE lifecycle callback. In plain Java code call
+     * {@link #destroy()} directly.
      */
     @PreDestroy
     private void preDestroy() {
@@ -174,8 +136,8 @@ public class PooledConnectionFactoryBean implements FactoryBean {
     }
 
     /**
+     * Stops the underlying pooled connection factory.
      *
-     * @throws Exception
      * @org.apache.xbean.DestroyMethod
      */
     public void destroy() throws Exception {
@@ -185,22 +147,38 @@ public class PooledConnectionFactoryBean implements FactoryBean {
         }
     }
 
-    @Override
-    public Object getObject() throws Exception {
-        // in case spring-dm calls getObject before this bean has been initialized
+    // -------------------------------------------------------------------------
+    // Factory method
+    // -------------------------------------------------------------------------
+
+    /**
+     * Returns the created {@link ConnectionFactory}.
+     * If the factory has not yet been initialised, {@link #afterPropertiesSet()}
+     * is called automatically.
+     */
+    public ConnectionFactory create() throws Exception {
         if (pooledConnectionFactory == null) {
             afterPropertiesSet();
         }
         return pooledConnectionFactory;
     }
 
-    @Override
-    public Class getObjectType() {
-        return ConnectionFactory.class;
-    }
+    // -------------------------------------------------------------------------
+    // Properties
+    // -------------------------------------------------------------------------
 
-    @Override
-    public boolean isSingleton() {
-        return true;
-    }
+    public int getMaxConnections() { return maxConnections; }
+    public void setMaxConnections(int maxConnections) { this.maxConnections = maxConnections; }
+
+    public int getMaximumActive() { return maximumActive; }
+    public void setMaximumActive(int maximumActive) { this.maximumActive = maximumActive; }
+
+    public Object getTransactionManager() { return transactionManager; }
+    public void setTransactionManager(Object transactionManager) { this.transactionManager = transactionManager; }
+
+    public String getResourceName() { return resourceName; }
+    public void setResourceName(String resourceName) { this.resourceName = resourceName; }
+
+    public ConnectionFactory getConnectionFactory() { return connectionFactory; }
+    public void setConnectionFactory(ConnectionFactory connectionFactory) { this.connectionFactory = connectionFactory; }
 }

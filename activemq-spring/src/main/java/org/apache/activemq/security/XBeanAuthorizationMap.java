@@ -21,20 +21,17 @@ import java.util.List;
 import jakarta.annotation.PostConstruct;
 
 import org.apache.activemq.filter.DestinationMapEntry;
-import org.springframework.beans.factory.InitializingBean;
-
 
 /**
- *  @org.apache.xbean.XBean element="authorizationMap"
+ * @org.apache.xbean.XBean element="authorizationMap"
  */
-public class XBeanAuthorizationMap extends DefaultAuthorizationMap implements InitializingBean {
+public class XBeanAuthorizationMap extends DefaultAuthorizationMap {
 
     protected List<DestinationMapEntry> authorizationEntries;
 
     /**
-     * JSR-250 callback wrapper; converts checked exceptions to runtime exceptions
-     *
-     * delegates to afterPropertiesSet, done to prevent backwards incompatible signature change.
+     * Jakarta EE lifecycle callback. In plain Java code call
+     * {@link #afterPropertiesSet()} directly.
      */
     @PostConstruct
     private void postConstruct() {
@@ -46,21 +43,16 @@ public class XBeanAuthorizationMap extends DefaultAuthorizationMap implements In
     }
 
     /**
-     *
      * @org.apache.xbean.InitMethod
      */
-    @Override
     public void afterPropertiesSet() throws Exception {
         for (DestinationMapEntry entry : authorizationEntries) {
-            if (((XBeanAuthorizationEntry)entry).getGroupClass() == null) {
-                ((XBeanAuthorizationEntry)entry).setGroupClass(groupClass);
+            if (((XBeanAuthorizationEntry) entry).getGroupClass() == null) {
+                ((XBeanAuthorizationEntry) entry).setGroupClass(groupClass);
             }
-            ((XBeanAuthorizationEntry)entry).afterPropertiesSet();
+            ((XBeanAuthorizationEntry) entry).afterPropertiesSet();
         }
 
-        // also check group class of temp destination ACL
-        // use the group class of the <authorizationMap> entry if this temp
-        // destination entry has no group class specified.
         if (getTempDestinationAuthorizationEntry() != null) {
             if (getTempDestinationAuthorizationEntry().getGroupClass() == null) {
                 getTempDestinationAuthorizationEntry().setGroupClass(groupClass);
@@ -72,7 +64,7 @@ public class XBeanAuthorizationMap extends DefaultAuthorizationMap implements In
     }
 
     /**
-     * Sets the individual entries on the authorization map
+     * Sets the individual entries on the authorization map.
      *
      * @org.apache.xbean.ElementType class="org.apache.activemq.security.AuthorizationEntry"
      */
@@ -81,5 +73,4 @@ public class XBeanAuthorizationMap extends DefaultAuthorizationMap implements In
     public void setAuthorizationEntries(List<DestinationMapEntry> entries) {
         this.authorizationEntries = entries;
     }
-
 }

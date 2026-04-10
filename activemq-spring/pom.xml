@@ -32,8 +32,7 @@
   <properties>
     <activemq.osgi.import>
       jakarta.transaction*;resolution:=optional,
-      org.apache.geronimo.transaction.manager*;resolution:=optional,
-      org.springframework*;resolution:=optional
+      org.apache.geronimo.transaction.manager*;resolution:=optional
     </activemq.osgi.import>
   </properties>
 
@@ -57,16 +56,12 @@
     </dependency>
     <dependency>
       <groupId>org.apache.xbean</groupId>
-      <artifactId>xbean-spring</artifactId>
+      <artifactId>xbean-reflect</artifactId>
+      <version>${xbean-version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.activemq</groupId>
       <artifactId>activemq-broker</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.springframework</groupId>
-      <artifactId>spring-context</artifactId>
-      <optional>true</optional>
     </dependency>
     <dependency>
       <groupId>org.apache.activemq</groupId>
@@ -166,16 +161,6 @@
       <artifactId>commons-pool2</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.springframework</groupId>
-      <artifactId>spring-beans</artifactId>
-      <optional>true</optional>
-    </dependency>
-    <dependency>
-      <groupId>org.springframework</groupId>
-      <artifactId>spring-test</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>activemq-broker</artifactId>
       <type>test-jar</type>
@@ -184,11 +169,6 @@
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.springframework</groupId>
-      <artifactId>spring-jms</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -254,32 +234,6 @@
             <version>1.12.1</version>
           </dependency>
         </dependencies>
-      </plugin>
-      <plugin><!-- workaround for https://issues.apache.org/jira/browse/XBEAN-335 -->
-        <groupId>com.google.code.maven-replacer-plugin</groupId>
-        <artifactId>replacer</artifactId>
-        <version>1.5.3</version>
-        <executions>
-          <execution>
-            <phase>process-classes</phase>
-            <goals>
-              <goal>replace</goal>
-            </goals>
-          </execution>
-        </executions>
-        <configuration>
-          <basedir>${project.build.directory}/classes/META-INF</basedir>
-          <includes>
-            <include>spring.*</include>
-          </includes>
-          <replacements>
-            <replacement>
-              <token>#... ... .+</token>
-              <value>#</value>
-            </replacement>
-          </replacements>
-          <regex>true</regex>
-        </configuration>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>

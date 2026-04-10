@@ -16,23 +16,43 @@
  */
 package org.apache.activemq.hooks;
 
-import org.springframework.beans.BeansException;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationContextAware;
-import org.springframework.context.ConfigurableApplicationContext;
+import java.io.Closeable;
+import java.io.IOException;
 
-public class SpringContextHook implements Runnable, ApplicationContextAware {
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-    ApplicationContext applicationContext;
-    
+/**
+ * A broker shutdown hook that closes a {@link Closeable} context (e.g. a
+ * resource or connection factory) when the broker stops.
+ *
+ * <p>Previously this class held a direct reference to a Spring
+ * {@code ApplicationContext} and closed it on shutdown. It has been refactored
+ * to operate on any {@link Closeable}, removing the Spring dependency.</p>
+ */
+public class SpringContextHook implements Runnable {
+
+    private static final Logger LOG = LoggerFactory.getLogger(SpringContextHook.class);
+
+    private final Closeable context;
+
+    /**
+     * Creates a hook that will close {@code context} when the broker stops.
+     *
+     * @param context the resource to close on broker shutdown
+     */
+    public SpringContextHook(Closeable context) {
+        this.context = context;
+    }
+
+    @Override
     public void run() {
-        if (applicationContext instanceof ConfigurableApplicationContext) {
-            ((ConfigurableApplicationContext) applicationContext).close();
+        if (context != null) {
+            try {
+                context.close();
+            } catch (IOException e) {
+                LOG.warn("Error closing context on broker shutdown: {}", e.getMessage(), e);
+            }
         }
     }
-
-    public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
-        this.applicationContext = applicationContext;
-    }
-
 }

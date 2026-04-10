@@ -18,27 +18,25 @@ package org.apache.activemq.spring;
 
 import jakarta.annotation.PostConstruct;
 
-import org.springframework.beans.factory.BeanNameAware;
-
 /**
- * A <a href="http://www.springframework.org/">Spring</a> enhanced connection
- * factory which will automatically use the Spring bean name as the clientIDPrefix property
- * so that connections created have client IDs related to your Spring.xml file for
- * easier comprehension from <a href="http://activemq.apache.org/jmx.html">JMX</a>.
+ * An ActiveMQ connection factory that supports using the bean name as the
+ * {@code clientIDPrefix} so that JMX visibility is improved.
+ *
+ * <p>When running inside a Jakarta EE / CDI container the {@link PostConstruct}
+ * callback on {@link #afterPropertiesSet()} is invoked automatically. In plain
+ * Java usage call {@link #afterPropertiesSet()} explicitly after setting all
+ * properties.</p>
  *
  * @org.apache.xbean.XBean element="connectionFactory"
- *
- *
  */
-public class ActiveMQConnectionFactory extends org.apache.activemq.ActiveMQConnectionFactory implements BeanNameAware {
+public class ActiveMQConnectionFactory extends org.apache.activemq.ActiveMQConnectionFactory {
 
     private String beanName;
     private boolean useBeanNameAsClientIdPrefix;
 
     /**
-     * JSR-250 callback wrapper; converts checked exceptions to runtime exceptions
-     *
-     * delegates to afterPropertiesSet, done to prevent backwards incompatible signature change.
+     * Jakarta EE lifecycle callback – invoked automatically by CDI / Jakarta
+     * containers. In plain Java code call {@link #afterPropertiesSet()} directly.
      */
     @PostConstruct
     private void postConstruct() {
@@ -50,7 +48,9 @@ public class ActiveMQConnectionFactory extends org.apache.activemq.ActiveMQConne
     }
 
     /**
-     * @throws Exception
+     * Applies the bean name as the client-ID prefix when
+     * {@link #isUseBeanNameAsClientIdPrefix()} is {@code true}.
+     *
      * @org.apache.xbean.InitMethod
      */
     public void afterPropertiesSet() throws Exception {
@@ -63,7 +63,11 @@ public class ActiveMQConnectionFactory extends org.apache.activemq.ActiveMQConne
         return beanName;
     }
 
-    @Override
+    /**
+     * Sets the logical name of this bean. When
+     * {@link #isUseBeanNameAsClientIdPrefix()} is enabled the name is used as
+     * the JMS client-ID prefix.
+     */
     public void setBeanName(String beanName) {
         this.beanName = beanName;
     }

@@ -16,94 +16,95 @@
  */
 package org.apache.activemq.xbean;
 
+import java.net.URL;
 import java.util.HashMap;
 
 import org.apache.activemq.broker.BrokerService;
-import org.springframework.beans.factory.DisposableBean;
-import org.springframework.beans.factory.FactoryBean;
-import org.springframework.beans.factory.InitializingBean;
-import org.springframework.core.io.Resource;
 
 /**
- * Used to share a single broker even if you have multiple broker bean
- * definitions. A use case is where you have multiple web applications that want
- * to start an embedded broker but only the first one to deploy should actually
- * start it.
- * 
- * 
+ * A plain-Java factory that shares a single broker instance across multiple
+ * callers using the same configuration file. A use case is multiple web
+ * applications that each try to start an embedded broker: only the first one
+ * actually starts it; subsequent calls increment a reference count.
+ *
+ * <p>Previously this class implemented Spring's {@code FactoryBean},
+ * {@code InitializingBean} and {@code DisposableBean}. Those interfaces have
+ * been removed so that no Spring dependency is required.</p>
  */
-public class PooledBrokerFactoryBean implements FactoryBean, InitializingBean, DisposableBean {
+public class PooledBrokerFactoryBean {
 
-    static final HashMap<String, SharedBroker> SHARED_BROKER_MAP = new HashMap<String, SharedBroker>();
+    static final HashMap<String, SharedBroker> SHARED_BROKER_MAP = new HashMap<>();
 
     private boolean start;
-    private Resource config;
+    private URL config;
 
     static class SharedBroker {
         BrokerFactoryBean factory;
         int refCount;
     }
 
+    // -------------------------------------------------------------------------
+    // Lifecycle
+    // -------------------------------------------------------------------------
+
     public void afterPropertiesSet() throws Exception {
+        String key = config.toExternalForm();
         synchronized (SHARED_BROKER_MAP) {
-            SharedBroker sharedBroker = SHARED_BROKER_MAP.get(config.getFilename());
+            SharedBroker sharedBroker = SHARED_BROKER_MAP.get(key);
             if (sharedBroker == null) {
                 sharedBroker = new SharedBroker();
-                sharedBroker.factory = new BrokerFactoryBean();
-                sharedBroker.factory.setConfig(config);
+                sharedBroker.factory = new BrokerFactoryBean(config);
                 sharedBroker.factory.setStart(start);
                 sharedBroker.factory.afterPropertiesSet();
-                SHARED_BROKER_MAP.put(config.getFilename(), sharedBroker);
+                SHARED_BROKER_MAP.put(key, sharedBroker);
             }
             sharedBroker.refCount++;
         }
     }
 
     public void destroy() throws Exception {
+        String key = config.toExternalForm();
         synchronized (SHARED_BROKER_MAP) {
-            SharedBroker sharedBroker = SHARED_BROKER_MAP.get(config.getFilename());
+            SharedBroker sharedBroker = SHARED_BROKER_MAP.get(key);
             if (sharedBroker != null) {
                 sharedBroker.refCount--;
                 if (sharedBroker.refCount == 0) {
                     sharedBroker.factory.destroy();
-                    SHARED_BROKER_MAP.remove(config.getFilename());
+                    SHARED_BROKER_MAP.remove(key);
                 }
             }
         }
     }
 
-    public Resource getConfig() {
+    // -------------------------------------------------------------------------
+    // Factory method
+    // -------------------------------------------------------------------------
+
+    public BrokerService getBroker() throws Exception {
+        String key = config.toExternalForm();
+        synchronized (SHARED_BROKER_MAP) {
+            SharedBroker sharedBroker = SHARED_BROKER_MAP.get(key);
+            return (sharedBroker != null) ? sharedBroker.factory.getBroker() : null;
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Properties
+    // -------------------------------------------------------------------------
+
+    public URL getConfig() {
         return config;
     }
 
-    public Object getObject() throws Exception {
-        synchronized (SHARED_BROKER_MAP) {
-            SharedBroker sharedBroker = SHARED_BROKER_MAP.get(config.getFilename());
-            if (sharedBroker != null) {
-                return sharedBroker.factory.getObject();
-            }
-        }
-        return null;
-    }
-
-    public Class getObjectType() {
-        return BrokerService.class;
-    }
-
-    public boolean isSingleton() {
-        return true;
+    public void setConfig(URL config) {
+        this.config = config;
     }
 
     public boolean isStart() {
         return start;
     }
 
-    public void setConfig(Resource config) {
-        this.config = config;
-    }
-
     public void setStart(boolean start) {
         this.start = start;
     }
-
 }

@@ -20,19 +20,20 @@ package org.apache.activemq.spring;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.springframework.beans.factory.FactoryBean;
-
 /**
- * A helper class for creating a failover configured {@link ActiveMQConnectionFactory}
- * which supports one or more TCP based hostname/ports which can all be configured in a
- * consistent way without too much URL hacking.
+ * A helper factory for creating a failover-configured
+ * {@link ActiveMQConnectionFactory} from one or more TCP host/port pairs
+ * without having to construct the URL manually.
  *
- * 
+ * <p>Previously this class implemented Spring's {@code FactoryBean}. It has
+ * been refactored to a plain factory with a {@link #createConnectionFactory()}
+ * method so that no Spring dependency is required.</p>
  */
-public class ActiveMQConnectionFactoryFactoryBean implements FactoryBean {
-    private List<String> tcpHostAndPorts = new ArrayList<String>();
+public class ActiveMQConnectionFactoryFactoryBean {
 
-    // tcp properties
+    private List<String> tcpHostAndPorts = new ArrayList<>();
+
+    // TCP properties
     private Long maxInactivityDuration;
     private String tcpProperties;
 
@@ -40,10 +41,17 @@ public class ActiveMQConnectionFactoryFactoryBean implements FactoryBean {
     private Long maxReconnectDelay;
     private String failoverProperties;
 
-    public Object getObject() throws Exception {
+    // -------------------------------------------------------------------------
+    // Factory method
+    // -------------------------------------------------------------------------
+
+    /**
+     * Creates and returns a new {@link ActiveMQConnectionFactory} configured
+     * with a failover URL built from the supplied host/port list.
+     */
+    public ActiveMQConnectionFactory createConnectionFactory() throws Exception {
         ActiveMQConnectionFactory answer = new ActiveMQConnectionFactory();
-        String brokerURL = getBrokerURL();
-        answer.setBrokerURL(brokerURL);
+        answer.setBrokerURL(getBrokerURL());
         return answer;
     }
 
@@ -58,7 +66,7 @@ public class ActiveMQConnectionFactoryFactoryBean implements FactoryBean {
         }
         buffer.append(")");
 
-        List<String> parameters = new ArrayList<String>();
+        List<String> parameters = new ArrayList<>();
         if (maxReconnectDelay != null) {
             parameters.add("maxReconnectDelay=" + maxReconnectDelay);
         }
@@ -69,90 +77,50 @@ public class ActiveMQConnectionFactoryFactoryBean implements FactoryBean {
         return buffer.toString();
     }
 
-    public Class getObjectType() {
-        return ActiveMQConnectionFactory.class;
-    }
-
-    public boolean isSingleton() {
-        return true;
-    }
-
+    // -------------------------------------------------------------------------
     // Properties
-    //-------------------------------------------------------------------------
+    // -------------------------------------------------------------------------
 
-    public List<String> getTcpHostAndPorts() {
-        return tcpHostAndPorts;
-    }
-
-    public void setTcpHostAndPorts(List<String> tcpHostAndPorts) {
-        this.tcpHostAndPorts = tcpHostAndPorts;
-    }
+    public List<String> getTcpHostAndPorts() { return tcpHostAndPorts; }
+    public void setTcpHostAndPorts(List<String> tcpHostAndPorts) { this.tcpHostAndPorts = tcpHostAndPorts; }
 
     public void setTcpHostAndPort(String tcpHostAndPort) {
-        tcpHostAndPorts = new ArrayList<String>();
-        tcpHostAndPorts.add(tcpHostAndPort);
+        this.tcpHostAndPorts = new ArrayList<>();
+        this.tcpHostAndPorts.add(tcpHostAndPort);
     }
 
-    public Long getMaxInactivityDuration() {
-        return maxInactivityDuration;
-    }
+    public Long getMaxInactivityDuration() { return maxInactivityDuration; }
+    public void setMaxInactivityDuration(Long maxInactivityDuration) { this.maxInactivityDuration = maxInactivityDuration; }
 
-    public void setMaxInactivityDuration(Long maxInactivityDuration) {
-        this.maxInactivityDuration = maxInactivityDuration;
-    }
+    public String getTcpProperties() { return tcpProperties; }
+    public void setTcpProperties(String tcpProperties) { this.tcpProperties = tcpProperties; }
 
-    public String getTcpProperties() {
-        return tcpProperties;
-    }
+    public Long getMaxReconnectDelay() { return maxReconnectDelay; }
+    public void setMaxReconnectDelay(Long maxReconnectDelay) { this.maxReconnectDelay = maxReconnectDelay; }
 
-    public void setTcpProperties(String tcpProperties) {
-        this.tcpProperties = tcpProperties;
-    }
+    public String getFailoverProperties() { return failoverProperties; }
+    public void setFailoverProperties(String failoverProperties) { this.failoverProperties = failoverProperties; }
 
-    public Long getMaxReconnectDelay() {
-        return maxReconnectDelay;
-    }
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
 
-    public void setMaxReconnectDelay(Long maxReconnectDelay) {
-        this.maxReconnectDelay = maxReconnectDelay;
-    }
-
-    public String getFailoverProperties() {
-        return failoverProperties;
-    }
-
-    public void setFailoverProperties(String failoverProperties) {
-        this.failoverProperties = failoverProperties;
-    }
-
-    // Implementation methods
-    //-------------------------------------------------------------------------
-
-    /**
-     * Turns a list of query string key=value strings into a query URL string
-     * of the form "?a=x&b=y"
-     */
     protected String asQueryString(List<String> parameters) {
         int size = parameters.size();
         if (size < 1) {
             return "";
         }
-        else {
-            StringBuilder buffer = new StringBuilder("?");
-            buffer.append(parameters.get(0));
-            for (int i = 1; i < size; i++) {
-                buffer.append("&");
-                buffer.append(parameters.get(i));
-            }
-            return buffer.toString();
+        StringBuilder buffer = new StringBuilder("?");
+        buffer.append(parameters.get(0));
+        for (int i = 1; i < size; i++) {
+            buffer.append("&");
+            buffer.append(parameters.get(i));
         }
+        return buffer.toString();
     }
 
-    /**
-     * Allows us to add any TCP specific URI configurations
-     */
     protected String createTcpHostAndPortUrl(String tcpHostAndPort) {
-        List<String> parameters = new ArrayList<String>();
+        List<String> parameters = new ArrayList<>();
         if (maxInactivityDuration != null) {
             parameters.add("wireFormat.maxInactivityDuration=" + maxInactivityDuration);
         }
@@ -162,9 +130,7 @@ public class ActiveMQConnectionFactoryFactoryBean implements FactoryBean {
         return tcpHostAndPort + asQueryString(parameters);
     }
 
-
     protected boolean notEmpty(String text) {
-        return text != null && text.length() > 0;
+        return text != null && !text.isEmpty();
     }
-
 }

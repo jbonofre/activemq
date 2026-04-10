@@ -18,17 +18,14 @@ package org.apache.activemq.security;
 
 import jakarta.annotation.PostConstruct;
 
-import org.springframework.beans.factory.InitializingBean;
-
 /**
  * Represents an entry in a {@link DefaultAuthorizationMap} for assigning
  * different operations (read, write, admin) of user roles to a specific
  * destination or a hierarchical wildcard area of destinations.
  *
  * @org.apache.xbean.XBean element="authorizationEntry"
- *
  */
-public class XBeanAuthorizationEntry extends AuthorizationEntry implements InitializingBean {
+public class XBeanAuthorizationEntry extends AuthorizationEntry {
 
     @Override
     public void setAdmin(String roles) throws Exception {
@@ -46,9 +43,8 @@ public class XBeanAuthorizationEntry extends AuthorizationEntry implements Initi
     }
 
     /**
-     * JSR-250 callback wrapper; converts checked exceptions to runtime exceptions
-     *
-     * delegates to afterPropertiesSet, done to prevent backwards incompatible signature change.
+     * Jakarta EE lifecycle callback. In plain Java code call
+     * {@link #afterPropertiesSet()} directly.
      */
     @PostConstruct
     private void postConstruct() {
@@ -60,20 +56,16 @@ public class XBeanAuthorizationEntry extends AuthorizationEntry implements Initi
     }
 
     /**
-     *
      * @org.apache.xbean.InitMethod
      */
     @Override
     public void afterPropertiesSet() throws Exception {
-
         if (adminRoles != null) {
             setAdminACLs(parseACLs(adminRoles));
         }
-
         if (writeRoles != null) {
             setWriteACLs(parseACLs(writeRoles));
         }
-
         if (readRoles != null) {
             setReadACLs(parseACLs(readRoles));
         }

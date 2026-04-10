@@ -16,22 +16,45 @@
  */
 package org.apache.activemq.network.jms;
 
-import org.springframework.jndi.JndiTemplate;
+import java.util.Hashtable;
+import java.util.Properties;
 
+import javax.naming.InitialContext;
 import javax.naming.NamingException;
 
 /**
-* @author <a href="http://hiramchirino.com">Hiram Chirino</a>
-*/
+ * A {@link JndiLookupFactory} that creates an {@link InitialContext} from a
+ * configurable set of JNDI environment properties.
+ *
+ * <p>This replaces the former Spring {@code JndiTemplate}-based implementation
+ * with a plain-Java equivalent that carries no Spring dependency.</p>
+ */
 public class JndiTemplateLookupFactory extends JndiLookupFactory {
-    private final JndiTemplate template;
 
-    public JndiTemplateLookupFactory(JndiTemplate template) {
-        this.template = template;
+    private final Properties environment;
+
+    /**
+     * Creates a factory that performs JNDI lookups using the supplied
+     * environment properties.
+     *
+     * @param environment JNDI initial-context environment; may be {@code null}
+     *                    to use the default context
+     */
+    public JndiTemplateLookupFactory(Properties environment) {
+        this.environment = environment;
     }
 
     @Override
     public <T> T lookup(String name, Class<T> clazz) throws NamingException {
-        return template.lookup(name, clazz);
+        Hashtable<Object, Object> env = null;
+        if (environment != null && !environment.isEmpty()) {
+            env = new Hashtable<>(environment);
+        }
+        InitialContext ctx = (env != null) ? new InitialContext(env) : new InitialContext();
+        try {
+            return clazz.cast(ctx.lookup(name));
+        } finally {
+            ctx.close();
+        }
     }
 }

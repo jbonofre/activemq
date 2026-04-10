@@ -18,40 +18,52 @@ package org.apache.activemq.spring;
 
 import java.io.InputStream;
 import java.net.MalformedURLException;
+import java.net.URL;
 import java.security.KeyStore;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.Security;
-import java.security.cert.*;
+import java.security.cert.CRL;
+import java.security.cert.CRLException;
+import java.security.cert.CertPathTrustManagerParameters;
+import java.security.cert.CertStore;
+import java.security.cert.CertStoreException;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
+import java.security.cert.CollectionCertStoreParameters;
+import java.security.cert.PKIXBuilderParameters;
+import java.security.cert.X509CertSelector;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 
 import jakarta.annotation.PostConstruct;
-import javax.net.ssl.*;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLException;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.TrustManagerFactory;
+import javax.net.ssl.KeyManager;
 
 import org.apache.activemq.broker.SslContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.io.Resource;
 
 /**
- * Extends the SslContext so that it's easier to configure from spring.
+ * Extends the SslContext so that it's easier to configure from XBean XML.
+ * Keystore and truststore paths are resolved via {@link Utils#resourceFromString(String)}.
  *
  * @org.apache.xbean.XBean element="sslContext"
- *
- *
  */
 public class SpringSslContext extends SslContext {
 
-    private static final transient Logger LOG = LoggerFactory.getLogger(SpringSslContext.class);
+    private static final Logger LOG = LoggerFactory.getLogger(SpringSslContext.class);
 
-    private String keyStoreType="jks";
-    private String trustStoreType="jks";
+    private String keyStoreType = "jks";
+    private String trustStoreType = "jks";
 
-    private String secureRandomAlgorithm="SHA1PRNG";
-    private String keyStoreAlgorithm=KeyManagerFactory.getDefaultAlgorithm();
-    private String trustStoreAlgorithm=TrustManagerFactory.getDefaultAlgorithm();
+    private String secureRandomAlgorithm = "SHA1PRNG";
+    private String keyStoreAlgorithm = KeyManagerFactory.getDefaultAlgorithm();
+    private String trustStoreAlgorithm = TrustManagerFactory.getDefaultAlgorithm();
 
     private String keyStore;
     private String trustStore;
@@ -63,9 +75,8 @@ public class SpringSslContext extends SslContext {
     private String crlPath;
 
     /**
-     * JSR-250 callback wrapper; converts checked exceptions to runtime exceptions
-     *
-     * delegates to afterPropertiesSet, done to prevent backwards incompatible signature change.
+     * Jakarta EE lifecycle callback. In plain Java code call
+     * {@link #afterPropertiesSet()} directly.
      */
     @PostConstruct
     private void postConstruct() {
@@ -77,14 +88,14 @@ public class SpringSslContext extends SslContext {
     }
 
     /**
+     * Initialises the SSL context from the configured keystore / truststore paths.
      *
-     * @throws Exception
      * @org.apache.xbean.InitMethod
      */
     public void afterPropertiesSet() throws Exception {
         keyManagers.addAll(createKeyManagers());
         trustManagers.addAll(createTrustManagers());
-        if( secureRandom == null ) {
+        if (secureRandom == null) {
             secureRandom = createSecureRandom();
         }
     }
@@ -94,13 +105,12 @@ public class SpringSslContext extends SslContext {
     }
 
     private Collection<TrustManager> createTrustManagers() throws Exception {
-        boolean ocsp = Boolean.valueOf(Security.getProperty("ocsp.enable"));
-
+        boolean ocsp = Boolean.parseBoolean(Security.getProperty("ocsp.enable"));
         KeyStore ks = createTrustManagerKeyStore();
-        if( ks ==null ) {
-            return new ArrayList<TrustManager>(0);
+        if (ks == null) {
+            return new ArrayList<>(0);
         }
-        TrustManagerFactory tmf  = TrustManagerFactory.getInstance(trustStoreAlgorithm);
+        TrustManagerFactory tmf = TrustManagerFactory.getInstance(trustStoreAlgorithm);
         boolean initialized = false;
         if ((ocsp || crlPath != null) && trustStoreAlgorithm.equalsIgnoreCase("PKIX")) {
             PKIXBuilderParameters pkixParams = new PKIXBuilderParameters(ks, new X509CertSelector());
@@ -108,160 +118,96 @@ public class SpringSslContext extends SslContext {
                 pkixParams.setRevocationEnabled(true);
                 Collection<? extends CRL> crlList = loadCRL();
                 if (crlList != null) {
-                    pkixParams.addCertStore(CertStore.getInstance("Collection", new CollectionCertStoreParameters(crlList)));
+                    pkixParams.addCertStore(CertStore.getInstance("Collection",
+                            new CollectionCertStoreParameters(crlList)));
                 }
             }
             tmf.init(new CertPathTrustManagerParameters(pkixParams));
             initialized = true;
         }
-
         if (!initialized) {
             tmf.init(ks);
         }
-
         return Arrays.asList(tmf.getTrustManagers());
     }
 
     private Collection<KeyManager> createKeyManagers() throws Exception {
         KeyStore ks = createKeyManagerKeyStore();
-        if( ks ==null ) {
-            return new ArrayList<KeyManager>(0);
+        if (ks == null) {
+            return new ArrayList<>(0);
         }
-
-        KeyManagerFactory tmf  = KeyManagerFactory.getInstance(keyStoreAlgorithm);
-        tmf.init(ks, keyStoreKeyPassword == null ? (keyStorePassword==null? null : keyStorePassword.toCharArray()) : keyStoreKeyPassword.toCharArray());
-        return Arrays.asList(tmf.getKeyManagers());
+        KeyManagerFactory kmf = KeyManagerFactory.getInstance(keyStoreAlgorithm);
+        kmf.init(ks, keyStoreKeyPassword == null
+                ? (keyStorePassword == null ? null : keyStorePassword.toCharArray())
+                : keyStoreKeyPassword.toCharArray());
+        return Arrays.asList(kmf.getKeyManagers());
     }
 
     private KeyStore createTrustManagerKeyStore() throws Exception {
-        if( trustStore ==null ) {
+        if (trustStore == null) {
             return null;
         }
-
         KeyStore ks = KeyStore.getInstance(trustStoreType);
-        InputStream is=Utils.resourceFromString(trustStore).getInputStream();
-        try {
-            ks.load(is, trustStorePassword==null? null : trustStorePassword.toCharArray());
-        } finally {
-            is.close();
+        try (InputStream is = Utils.resourceFromString(trustStore).openStream()) {
+            ks.load(is, trustStorePassword == null ? null : trustStorePassword.toCharArray());
         }
         return ks;
     }
 
     private KeyStore createKeyManagerKeyStore() throws Exception {
-        if( keyStore ==null ) {
+        if (keyStore == null) {
             return null;
         }
-
         KeyStore ks = KeyStore.getInstance(keyStoreType);
-        InputStream is=Utils.resourceFromString(keyStore).getInputStream();
-        try {
-            ks.load(is, keyStorePassword==null? null : keyStorePassword.toCharArray());
-        } finally {
-            is.close();
+        try (InputStream is = Utils.resourceFromString(keyStore).openStream()) {
+            ks.load(is, keyStorePassword == null ? null : keyStorePassword.toCharArray());
         }
         return ks;
-    }
-
-    public String getTrustStoreType() {
-        return trustStoreType;
-    }
-
-    public String getKeyStoreType() {
-        return keyStoreType;
-    }
-
-    public String getKeyStore() {
-        return keyStore;
-    }
-
-    public void setKeyStore(String keyStore) throws MalformedURLException {
-        this.keyStore = keyStore;
-    }
-
-    public String getTrustStore() {
-        return trustStore;
-    }
-
-    public void setTrustStore(String trustStore) throws MalformedURLException {
-        this.trustStore = trustStore;
-    }
-
-    public String getKeyStoreAlgorithm() {
-        return keyStoreAlgorithm;
-    }
-
-    public void setKeyStoreAlgorithm(String keyAlgorithm) {
-        this.keyStoreAlgorithm = keyAlgorithm;
-    }
-
-    public String getTrustStoreAlgorithm() {
-        return trustStoreAlgorithm;
-    }
-
-    public void setTrustStoreAlgorithm(String trustAlgorithm) {
-        this.trustStoreAlgorithm = trustAlgorithm;
-    }
-
-    public String getKeyStoreKeyPassword() {
-        return keyStoreKeyPassword;
-    }
-
-    public void setKeyStoreKeyPassword(String keyPassword) {
-        this.keyStoreKeyPassword = keyPassword;
-    }
-
-    public String getKeyStorePassword() {
-        return keyStorePassword;
-    }
-
-    public void setKeyStorePassword(String keyPassword) {
-        this.keyStorePassword = keyPassword;
-    }
-
-    public String getTrustStorePassword() {
-        return trustStorePassword;
-    }
-
-    public void setTrustStorePassword(String trustPassword) {
-        this.trustStorePassword = trustPassword;
-    }
-
-    public void setKeyStoreType(String keyType) {
-        this.keyStoreType = keyType;
-    }
-
-    public void setTrustStoreType(String trustType) {
-        this.trustStoreType = trustType;
-    }
-
-    public String getSecureRandomAlgorithm() {
-        return secureRandomAlgorithm;
-    }
-
-    public void setSecureRandomAlgorithm(String secureRandomAlgorithm) {
-        this.secureRandomAlgorithm = secureRandomAlgorithm;
-    }
-
-    public String getCrlPath() {
-        return crlPath;
-    }
-
-    public void setCrlPath(String crlPath) {
-        this.crlPath = crlPath;
     }
 
     private Collection<? extends CRL> loadCRL() throws Exception {
         if (crlPath == null) {
             return null;
         }
-        Resource resource = Utils.resourceFromString(crlPath);
-        InputStream is = resource.getInputStream();
-        try {
+        try (InputStream is = Utils.resourceFromString(crlPath).openStream()) {
             return CertificateFactory.getInstance("X.509").generateCRLs(is);
-        } finally {
-            is.close();
         }
     }
 
+    // -------------------------------------------------------------------------
+    // Getters / setters
+    // -------------------------------------------------------------------------
+
+    public String getTrustStoreType() { return trustStoreType; }
+    public void setTrustStoreType(String trustStoreType) { this.trustStoreType = trustStoreType; }
+
+    public String getKeyStoreType() { return keyStoreType; }
+    public void setKeyStoreType(String keyStoreType) { this.keyStoreType = keyStoreType; }
+
+    public String getKeyStore() { return keyStore; }
+    public void setKeyStore(String keyStore) throws MalformedURLException { this.keyStore = keyStore; }
+
+    public String getTrustStore() { return trustStore; }
+    public void setTrustStore(String trustStore) throws MalformedURLException { this.trustStore = trustStore; }
+
+    public String getKeyStoreAlgorithm() { return keyStoreAlgorithm; }
+    public void setKeyStoreAlgorithm(String keyAlgorithm) { this.keyStoreAlgorithm = keyAlgorithm; }
+
+    public String getTrustStoreAlgorithm() { return trustStoreAlgorithm; }
+    public void setTrustStoreAlgorithm(String trustAlgorithm) { this.trustStoreAlgorithm = trustAlgorithm; }
+
+    public String getKeyStoreKeyPassword() { return keyStoreKeyPassword; }
+    public void setKeyStoreKeyPassword(String keyPassword) { this.keyStoreKeyPassword = keyPassword; }
+
+    public String getKeyStorePassword() { return keyStorePassword; }
+    public void setKeyStorePassword(String keyPassword) { this.keyStorePassword = keyPassword; }
+
+    public String getTrustStorePassword() { return trustStorePassword; }
+    public void setTrustStorePassword(String trustPassword) { this.trustStorePassword = trustPassword; }
+
+    public String getSecureRandomAlgorithm() { return secureRandomAlgorithm; }
+    public void setSecureRandomAlgorithm(String secureRandomAlgorithm) { this.secureRandomAlgorithm = secureRandomAlgorithm; }
+
+    public String getCrlPath() { return crlPath; }
+    public void setCrlPath(String crlPath) { this.crlPath = crlPath; }
 }

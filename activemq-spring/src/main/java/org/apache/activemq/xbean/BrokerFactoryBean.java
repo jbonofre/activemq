@@ -16,124 +16,119 @@
  */
 package org.apache.activemq.xbean;
 
-import java.beans.PropertyEditorManager;
-import java.net.URI;
+import java.net.URL;
 
 import org.apache.activemq.broker.BrokerService;
-import org.apache.xbean.spring.context.ResourceXmlApplicationContext;
-import org.apache.xbean.spring.context.impl.URIEditor;
-import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.DisposableBean;
-import org.springframework.beans.factory.FactoryBean;
-import org.springframework.beans.factory.InitializingBean;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationContextAware;
-import org.springframework.core.io.Resource;
+import org.apache.activemq.spring.DefaultBrokerContext;
+import org.apache.activemq.spring.Utils;
 
 /**
- * A Spring {@link FactoryBean} which creates an embedded broker inside a Spring
- * XML using an external <a href="http://gbean.org/Custom+XML">XBean Spring XML
- * configuration file</a> which provides a much neater and more concise XML
- * format.
- * 
- * 
+ * A plain-Java factory that creates an embedded {@link BrokerService} from an
+ * XBean XML configuration file.
+ *
+ * <p>Usage:</p>
+ * <pre>
+ * BrokerFactoryBean factory = new BrokerFactoryBean();
+ * factory.setConfig(new URL("file:/path/to/activemq.xml"));
+ * factory.setStart(true);
+ * factory.afterPropertiesSet();          // initialise
+ * BrokerService broker = factory.getBroker();
+ * // … use broker …
+ * factory.destroy();                     // stop
+ * </pre>
+ *
+ * <p>Previously this class implemented Spring's {@code FactoryBean},
+ * {@code InitializingBean}, {@code DisposableBean} and
+ * {@code ApplicationContextAware}. Those interfaces have been removed in favour
+ * of explicit lifecycle calls so that no Spring dependency is required.</p>
  */
-public class BrokerFactoryBean implements FactoryBean, InitializingBean, DisposableBean, ApplicationContextAware {
+public class BrokerFactoryBean {
 
-    static {
-        PropertyEditorManager.registerEditor(URI.class, URIEditor.class);
-    }
-
-    private Resource config;
+    private URL config;
     private XBeanBrokerService broker;
     private boolean start;
-    private ResourceXmlApplicationContext context;
-    private ApplicationContext parentContext;
-    
+    private DefaultBrokerContext brokerContext;
+
     private boolean systemExitOnShutdown;
     private int systemExitOnShutdownExitCode;
 
     public BrokerFactoryBean() {
     }
 
-    public BrokerFactoryBean(Resource config) {
+    public BrokerFactoryBean(URL config) {
         this.config = config;
     }
 
-    public Object getObject() throws Exception {
-        return broker;
+    /** Convenience constructor that resolves the config from a URI string. */
+    public BrokerFactoryBean(String configUri) throws Exception {
+        this.config = Utils.resourceFromString(configUri);
     }
 
-    public Class getObjectType() {
-        return BrokerService.class;
-    }
+    // -------------------------------------------------------------------------
+    // Lifecycle
+    // -------------------------------------------------------------------------
 
-    public boolean isSingleton() {
-        return true;
-    }
-
-    public void setApplicationContext(ApplicationContext parentContext) throws BeansException {
-        this.parentContext = parentContext;
-    }
-
+    /**
+     * Loads and (optionally) starts the broker.
+     *
+     * @throws IllegalArgumentException if {@code config} has not been set or no
+     *                                  broker definition is found in the file
+     */
     public void afterPropertiesSet() throws Exception {
         if (config == null) {
             throw new IllegalArgumentException("config property must be set");
         }
-        context = new ResourceXmlApplicationContext(config, parentContext);
 
-        try {
-            broker = (XBeanBrokerService)context.getBean("broker");
-        } catch (BeansException e) {
-            // ignore...
-            // log.trace("No bean named broker available: " + e, e);
+        XBeanBrokerLoader loader = new XBeanBrokerLoader();
+        BrokerService loaded = loader.loadBroker(config);
+        if (!(loaded instanceof XBeanBrokerService)) {
+            throw new IllegalArgumentException(
+                    "The configuration has no XBeanBrokerService instance for resource: " + config);
         }
-        if (broker == null) {
-            // lets try find by type
-            String[] names = context.getBeanNamesForType(BrokerService.class);
-            for (int i = 0; i < names.length; i++) {
-                String name = names[i];
-                broker = (XBeanBrokerService)context.getBean(name);
-                if (broker != null) {
-                    break;
-                }
-            }
-        }
-        if (broker == null) {
-            throw new IllegalArgumentException("The configuration has no BrokerService instance for resource: " + config);
-        }
-        
-        if( systemExitOnShutdown ) {
-            broker.addShutdownHook(new Runnable(){
-                public void run() {
-                    System.exit(systemExitOnShutdownExitCode);
-                }
-            });
+        broker = (XBeanBrokerService) loaded;
+        brokerContext = new DefaultBrokerContext(loader.getBeanRegistry(), config.toExternalForm());
+        broker.setBrokerContext(brokerContext);
+
+        if (systemExitOnShutdown) {
+            final int exitCode = systemExitOnShutdownExitCode;
+            broker.addShutdownHook(() -> System.exit(exitCode));
         }
         if (start) {
             broker.start();
         }
     }
 
+    /** Stops the broker. */
     public void destroy() throws Exception {
-        if (context != null) {
-            context.close();
-        }
         if (broker != null) {
             broker.stop();
         }
     }
 
-    public Resource getConfig() {
+    // -------------------------------------------------------------------------
+    // Factory method
+    // -------------------------------------------------------------------------
+
+    /** Returns the configured {@link BrokerService}, or {@code null} if not yet initialised. */
+    public BrokerService getBroker() {
+        return broker;
+    }
+
+    // -------------------------------------------------------------------------
+    // Properties
+    // -------------------------------------------------------------------------
+
+    public URL getConfig() {
         return config;
     }
 
-    public void setConfig(Resource config) {
+    public void setConfig(URL config) {
         this.config = config;
     }
 
-    public BrokerService getBroker() {
-        return broker;
+    /** Convenience setter that resolves a URI string to a {@link URL}. */
+    public void setConfigUri(String uri) throws Exception {
+        this.config = Utils.resourceFromString(uri);
     }
 
     public boolean isStart() {
@@ -167,5 +162,4 @@ public class BrokerFactoryBean implements FactoryBean, InitializingBean, Disposa
     public void setSystemExitOnShutdownExitCode(int systemExitOnShutdownExitCode) {
         this.systemExitOnShutdownExitCode = systemExitOnShutdownExitCode;
     }
-
 }
