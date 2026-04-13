@@ -30,9 +30,9 @@ import org.slf4j.LoggerFactory;
  * {@code ApplicationContext} and closed it on shutdown. It has been refactored
  * to operate on any {@link Closeable}, removing the Spring dependency.</p>
  */
-public class SpringContextHook implements Runnable {
+public class BrokerShutdownHook implements Runnable {
 
-    private static final Logger LOG = LoggerFactory.getLogger(SpringContextHook.class);
+    private static final Logger LOG = LoggerFactory.getLogger(BrokerShutdownHook.class);
 
     private final Closeable context;
 
@@ -41,7 +41,7 @@ public class SpringContextHook implements Runnable {
      *
      * @param context the resource to close on broker shutdown
      */
-    public SpringContextHook(Closeable context) {
+    public BrokerShutdownHook(Closeable context) {
         this.context = context;
     }
 

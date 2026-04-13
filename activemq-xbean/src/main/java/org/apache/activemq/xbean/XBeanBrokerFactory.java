@@ -20,8 +20,8 @@ import java.net.URI;
 
 import org.apache.activemq.broker.BrokerFactoryHandler;
 import org.apache.activemq.broker.BrokerService;
-import org.apache.activemq.spring.DefaultBrokerContext;
-import org.apache.activemq.spring.Utils;
+import org.apache.activemq.xbean.DefaultBrokerContext;
+import org.apache.activemq.xbean.Utils;
 import org.apache.activemq.util.IntrospectionSupport;
 import org.apache.activemq.util.URISupport;
 import org.slf4j.Logger;

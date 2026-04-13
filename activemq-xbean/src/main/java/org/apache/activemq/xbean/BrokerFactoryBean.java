@@ -19,8 +19,8 @@ package org.apache.activemq.xbean;
 import java.net.URL;
 
 import org.apache.activemq.broker.BrokerService;
-import org.apache.activemq.spring.DefaultBrokerContext;
-import org.apache.activemq.spring.Utils;
+import org.apache.activemq.xbean.DefaultBrokerContext;
+import org.apache.activemq.xbean.Utils;
 
 /**
  * A plain-Java factory that creates an embedded {@link BrokerService} from an

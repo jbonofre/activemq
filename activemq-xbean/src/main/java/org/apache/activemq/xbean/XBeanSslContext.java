@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.activemq.spring;
+package org.apache.activemq.xbean;
 
 import java.io.InputStream;
 import java.net.MalformedURLException;
@@ -53,9 +53,9 @@ import org.slf4j.LoggerFactory;
  *
  * @org.apache.xbean.XBean element="sslContext"
  */
-public class SpringSslContext extends SslContext {
+public class XBeanSslContext extends SslContext {
 
-    private static final Logger LOG = LoggerFactory.getLogger(SpringSslContext.class);
+    private static final Logger LOG = LoggerFactory.getLogger(XBeanSslContext.class);
 
     private String keyStoreType = "jks";
     private String trustStoreType = "jks";

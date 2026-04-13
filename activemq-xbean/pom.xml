@@ -25,9 +25,9 @@
     <version>6.3.0-SNAPSHOT</version>
   </parent>
 
-  <artifactId>activemq-spring</artifactId>
-  <name>ActiveMQ :: Spring</name>
-  <description>ActiveMQ Spring Integration</description>
+  <artifactId>activemq-xbean</artifactId>
+  <name>ActiveMQ :: XBean</name>
+  <description>ActiveMQ XBean XML Configuration</description>
 
   <properties>
     <activemq.osgi.import>
