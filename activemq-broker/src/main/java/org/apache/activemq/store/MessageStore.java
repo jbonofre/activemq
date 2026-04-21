@@ -218,7 +218,7 @@ public interface MessageStore extends Service {
     StoreType getType();
 
     enum StoreType {
-        MEMORY, JDBC, KAHADB, TEMP_KAHADB
+        MEMORY, JDBC, KAHADB, TEMP_KAHADB, RAFT
     }
 
 }
