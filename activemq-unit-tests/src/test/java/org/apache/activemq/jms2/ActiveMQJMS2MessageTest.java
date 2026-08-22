@@ -23,6 +23,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.Serializable;
+import java.util.HashMap;
 import java.util.Map;
 import jakarta.jms.BytesMessage;
 import jakarta.jms.JMSException;
@@ -153,6 +154,30 @@ public class ActiveMQJMS2MessageTest {
         ObjectMessage message = new ActiveMQObjectMessage();
         message.setObject("Test message");
         message.getBody(Integer.class);
+    }
+
+    @Test
+    public void testObjectMessageIsAssignableToReturnsFalseOnDeserializationFailure() throws JMSException {
+        // Per Jakarta Messaging 3.1: if the message is an ObjectMessage and
+        // object deserialization fails then isBodyAssignableTo must return
+        // false rather than throwing.
+        ActiveMQObjectMessage message = new ActiveMQObjectMessage();
+        message.setObject(new HashMap<>(Map.of("key", "value")));
+        // Force re-deserialization from the marshalled bytes so getObject()
+        // exercises the untrusted-class check instead of returning the
+        // cached object.
+        message.storeContentAndClear();
+
+        assertFalse(message.isBodyAssignableTo(String.class));
+    }
+
+    @Test(expected = MessageFormatException.class)
+    public void testObjectMessageGetBodyThrowsMessageFormatExceptionOnDeserializationFailure() throws JMSException {
+        ActiveMQObjectMessage message = new ActiveMQObjectMessage();
+        message.setObject(new HashMap<>(Map.of("key", "value")));
+        message.storeContentAndClear();
+
+        message.getBody(String.class);
     }
 
     @Test
